@@ -81,7 +81,7 @@ jobs:
         VIMSPECTOR_MIMODE: gdb
 
     - name: "Upload test logs"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: 'test-logs-${{ runner.os }}-${{ matrix.runtime }}'
@@ -97,7 +97,7 @@ jobs:
     #     SSH_PASS: ${{ secrets.SSH_PASS }}
 
   MacOS:
-    runs-on: 'macos-12'
+    runs-on: 'macos-13'
     strategy:
       fail-fast: false
       matrix:
@@ -163,7 +163,7 @@ jobs:
         VIMSPECTOR_MIMODE: lldb
 
     - name: "Upload test logs"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: 'test-logs-${{ runner.os }}-${{ matrix.runtime }}'
