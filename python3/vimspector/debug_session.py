@@ -1381,7 +1381,7 @@ class DebugSession( object ):
     self._variablesView.EvaluateWatches( self._connection, frame )
 
     if reason == 'stopped':
-      vim.command( 'silent doautocmd User VimspectorEventProgramStopped' )
+      vim.command( 'silent doautocmd User VimspectorEventProgramPaused' )
       self._breakpoints.ClearTemporaryBreakpoint( frame[ 'source' ][ 'path' ],
                                                   frame[ 'line' ] )
 
