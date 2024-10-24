@@ -654,6 +654,7 @@ class DebugSession( object ):
 
 
   def _Reset( self ):
+    vim.command( 'doautocmd <nomodeline> User VimspectorDebugEndPre' )
     if self.parent_session:
       self._ResetUI()
       return
