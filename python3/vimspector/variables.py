@@ -24,7 +24,8 @@ from vimspector.debug_adapter_connection import DebugAdapterConnection
 
 
 class Formatable:
-  NONE = ""
+  NOT_SET = None
+  NONE = ''
   # 0b010101
   BIN = "{:#b}"
   # 0x80ffee5567
@@ -37,7 +38,7 @@ class Formatable:
   PRETTY_HEX = "{:#_x}"
 
   def __init__(self):
-    self.display_format = Formatable.NONE
+    self.display_format = Formatable.NOT_SET
 
 
 class Expandable( Formatable ):
@@ -635,16 +636,23 @@ class VariablesView( object ):
 
     return view.lines[ line_num ], view
 
-  def SetDisplayFormat( self, format, buf = None, line_num = None ):
+
+  def ClearDisplayFormat( self, buf = None, line_num = None ):
     variable, view = self._GetVariable( buf, line_num )
     if variable is None:
       return
 
+    variable.display_format = Formatable.NOT_SET
+    view.draw()
+
+  def _SetDisplayFormat( self, variable, format):
     variable.display_format = format
 
-    if variable.IsExpandable():
-      # TODO:set children's display_format
-      pass
+  def SetDisplayFormat( self, format, buf = None, line_num = None ):
+    variable, view = self._GetVariable( buf, line_num )
+    if variable is None:
+      return
+    self._SetDisplayFormat( variable, format)
     view.draw()
 
   def ToggleDisplayFormat( self, buf = None, line_num = None ):
@@ -652,7 +660,7 @@ class VariablesView( object ):
     if variable is None:
       return
 
-    if variable.display_format ==  Formatable.NONE:
+    if (variable.display_format ==  Formatable.NOT_SET) or (variable.display_format ==  Formatable.NONE):
        variable.display_format = Formatable.PRETTY_HEX
     elif variable.display_format == Formatable.PRETTY_HEX:
        variable.display_format = Formatable.PRETTY_BIN
@@ -754,7 +762,7 @@ class VariablesView( object ):
     return variable.connection, variable.MemoryReference()
 
 
-  def _DrawVariables( self, view, variables, indent_len, is_short = False ):
+  def _DrawVariables( self, view, variables, indent_len, is_short = False, parent_display_format = Formatable.NOT_SET):
     assert indent_len > 0
     for variable in variables:
       text = ''
@@ -770,13 +778,17 @@ class VariablesView( object ):
         variable.variable.get( 'presentationHint', {} ).get( 'kind',
                                                              'normal' ) )
 
-      if variable.display_format != Formatable.NONE:
+      display_format = parent_display_format
+      if variable.display_format != Formatable.NOT_SET:
+        display_format = variable.display_format
+
+      if (display_format != Formatable.NOT_SET) and (display_format != Formatable.NONE):
         try:
           num = int(value)
           try:
-            value = variable.display_format.format(num)
+            value = display_format.format(num)
           except:
-            vim.command("echo 'failed to format: " + value + " with: " + variable.display_format + "'");
+            vim.command("echo 'failed to format: " + value + " with: " + display_format + "'");
             pass
         except:
           pass
@@ -809,7 +821,8 @@ class VariablesView( object ):
         self._DrawVariables( view,
                              variable.variables,
                              indent_len + 2,
-                             is_short )
+                             is_short,
+                             display_format)
 
   def _DrawScopes( self ):
     # FIXME: The drawing is dumb and draws from scratch every time. This is
