@@ -23,7 +23,24 @@ from vimspector import utils, settings
 from vimspector.debug_adapter_connection import DebugAdapterConnection
 
 
-class Expandable:
+class Formatable:
+  NONE = ""
+  # 0b010101
+  BIN = "{:#b}"
+  # 0x80ffee5567
+  HEX = "{:#x}"
+  # 34,342
+  PRETTY_DECIMAL = "{:,d}"
+  # 0b01_0101
+  PRETTY_BIN = "{:#_b}"
+  # 0x80_ffee5567
+  PRETTY_HEX = "{:#_x}"
+
+  def __init__(self):
+    self.display_format = Formatable.NONE
+
+
+class Expandable( Formatable ):
   EXPANDED_BY_USER = 2
   EXPANDED_BY_US = 1
   COLLAPSED_BY_USER = 0
@@ -38,6 +55,7 @@ class Expandable:
   def __init__( self,
                 connection: DebugAdapterConnection,
                 container: 'Expandable' = None ):
+    super().__init__()
     self.variables: typing.List[ 'Variable' ] = None
     self.container: Expandable = container
     self.connection = connection
@@ -229,6 +247,30 @@ def AddExpandMappings( mappings = None ):
                  ':<C-u>call vimspector#ReadMemory()<CR>' )
 
 
+def AddDisplayFormatMappings( mappings = None):
+  if mappings is None:
+    mappings = settings.Dict( 'mappings' )[ 'variables' ]
+
+  #  for mapping in utils.GetVimList( mappings, 'set_display_format' ):
+    #  vim.command( f'nnoremap <silent> <buffer> { mapping } '
+           #  ':<C-u>call vimspector#SetDisplayFormat()<CR>' )
+
+  for mapping in utils.GetVimList( mappings, 'toggle_display_format' ):
+    vim.command( f'nnoremap <silent> <buffer> { mapping } '
+           ':<C-u>call vimspector#ToggleDisplayFormat()<CR>' )
+
+  for mapping in utils.GetVimList( mappings, 'clear_display_format' ):
+    vim.command( f'nnoremap <silent> <buffer> { mapping } '
+           ':<C-u>call vimspector#ClearDisplayFormat()<CR>' )
+
+  for mapping in utils.GetVimList( mappings, 'display_as_binary' ):
+    vim.command( f'nnoremap <silent> <buffer> { mapping } '
+           ':<C-u>call vimspector#SetBinaryDisplayFormat()<CR>' )
+
+  for mapping in utils.GetVimList( mappings, 'display_as_hex' ):
+    vim.command( f'nnoremap <silent> <buffer> { mapping } '
+           ':<C-u>call vimspector#SetHexDisplayFormat()<CR>' )
+
 
 class VariablesView( object ):
   def __init__( self, session_id, variables_win, watches_win ):
@@ -257,6 +299,7 @@ class VariablesView( object ):
           ( 'Dump', 'vimspector#ReadMemory()' )
         )
       AddExpandMappings( mappings )
+      AddDisplayFormatMappings(mappings)
 
     # Set up the "Watches" buffer in the watches_win (and create a WinBar in
     # there)
@@ -272,6 +315,8 @@ class VariablesView( object ):
 
     with utils.LetCurrentWindow( watches_win ):
       AddExpandMappings( mappings )
+      AddDisplayFormatMappings(mappings)
+
       for mapping in utils.GetVimList( mappings, 'delete' ):
         vim.command(
           f'nnoremap <buffer> { mapping } :call vimspector#DeleteWatch()<CR>' )
@@ -590,6 +635,34 @@ class VariablesView( object ):
 
     return view.lines[ line_num ], view
 
+  def SetDisplayFormat( self, format, buf = None, line_num = None ):
+    variable, view = self._GetVariable( buf, line_num )
+    if variable is None:
+      return
+
+    variable.display_format = format
+
+    if variable.IsExpandable():
+      # TODO:set children's display_format
+      pass
+    view.draw()
+
+  def ToggleDisplayFormat( self, buf = None, line_num = None ):
+    variable, view = self._GetVariable( buf, line_num )
+    if variable is None:
+      return
+
+    if variable.display_format ==  Formatable.NONE:
+       variable.display_format = Formatable.PRETTY_HEX
+    elif variable.display_format == Formatable.PRETTY_HEX:
+       variable.display_format = Formatable.PRETTY_BIN
+    elif variable.display_format == Formatable.PRETTY_BIN:
+       variable.display_format = Formatable.NONE
+    else:
+       variable.display_format = Formatable.PRETTY_HEX
+
+    view.draw()
+
   def ExpandVariable( self, buf = None, line_num = None ):
     variable, view = self._GetVariable( buf, line_num )
     if variable is None:
@@ -697,15 +770,24 @@ class VariablesView( object ):
         variable.variable.get( 'presentationHint', {} ).get( 'kind',
                                                              'normal' ) )
 
+      if variable.display_format != Formatable.NONE:
+        try:
+          num = int(value)
+          try:
+            value = variable.display_format.format(num)
+          except:
+            vim.command("echo 'failed to format: " + value + " with: " + variable.display_format + "'");
+            pass
+        except:
+          pass
 
       # FIXME: If 'value' is multi-line, somehow turn it into an expandable item
       # where the expansion is done "internally", resolving to the multi-line
       # value
       if is_short:
-        value = variable.variable.get( 'value', '<unknown>' )
         text = f'{indent}{icon} {name}: {value}'
       elif settings.Get( 'variables_display_mode' ) == 'compact':
-        value = variable.variable.get( 'value', '<unknown>' ).splitlines()
+        value = value.splitlines()
         if len( value ) > 0:
           value = value[ 0 ]
         else:

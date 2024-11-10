@@ -1482,6 +1482,10 @@ Variables and scopes ~
 
 - Current scope shows values of locals.
 - Use '<CR>', or double-click with left mouse to expand/collapse (+, -).
+- Use '<leader>t' to toggle display format between 'decimal', 'binary' and 'hex'.
+- Use '<leader>c' to clear display format.
+- Use '<leader>b' to display value as binary.
+- Use '<leader>h' to display value as hex. 
 - Set the value of the variable with '<C-CR>' (control + '<CR>') or
   '<leader><CR>' (if 'modifyOtherKeys' doesn't work for you)
 - View the type of the variable via mouse hover.

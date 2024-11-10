@@ -89,6 +89,10 @@ DEFAULTS = {
   'mappings': {
     'variables': {
       'expand_collapse': [ '<CR>', '<2-LeftMouse>' ],
+      'toggle_display_format': [ '<leader>t' ],
+      'clear_display_format': [ '<leader>c' ],
+      'display_as_binary': [ '<leader>b' ],
+      'display_as_hex': [ '<leader>h' ],
       'delete': [ '<Del>' ],
       'set_value': [ '<C-CR>', '<leader><CR>' ],
       'read_memory': [ '<leader>m' ],

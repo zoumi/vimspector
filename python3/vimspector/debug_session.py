@@ -917,6 +917,14 @@ class DebugSession( object ):
     self._variablesView.ExpandVariable( buf, line_num )
 
   @CurrentSession()
+  def SetDisplayFormat( self, format, buf = None, line_num = None ):
+    self._variablesView.SetDisplayFormat( format, buf, line_num )
+
+  @CurrentSession()
+  def ToggleDisplayFormat( self, buf = None, line_num = None ):
+    self._variablesView.ToggleDisplayFormat( buf, line_num )
+
+  @CurrentSession()
   @IfConnected()
   def SetVariableValue( self, new_value = None, buf = None, line_num = None ):
     if not self._server_capabilities.get( 'supportsSetVariable' ):

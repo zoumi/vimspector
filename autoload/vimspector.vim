@@ -403,6 +403,41 @@ function! vimspector#Stop( ... ) abort
   py3 _vimspector_session.Stop( **vim.eval( 'options' ) )
 endfunction
 
+function! vimspector#SetDisplayFormat( ... ) abort
+  if !s:Enabled()
+    return
+  endif
+  py3 _vimspector_session.SetDisplayFormat(a:1)
+endfunction
+
+function! vimspector#ClearDisplayFormat() abort
+  if !s:Enabled()
+    return
+  endif
+  py3 _vimspector_session.SetDisplayFormat('')
+endfunction
+
+function! vimspector#SetBinaryDisplayFormat() abort
+  if !s:Enabled()
+    return
+  endif
+  py3 _vimspector_session.SetDisplayFormat('{:#_b}')
+endfunction
+
+function! vimspector#SetHexDisplayFormat() abort
+  if !s:Enabled()
+    return
+  endif
+  py3 _vimspector_session.SetDisplayFormat('{:#_x}')
+endfunction
+
+function! vimspector#ToggleDisplayFormat() abort
+  if !s:Enabled()
+    return
+  endif
+  py3 _vimspector_session.ToggleDisplayFormat()
+endfunction
+
 function! vimspector#ExpandVariable() abort
   if !s:Enabled()
     return
