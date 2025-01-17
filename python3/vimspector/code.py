@@ -132,7 +132,13 @@ class CodeView( object ):
 
     with utils.LetCurrentWindow( self._window ):
       try:
-        if utils.OpenFileInCurrentWindow( frame[ 'source' ][ 'path' ] ):
+        file_path = frame[ 'source' ][ 'path' ]
+        #check if file exists by vim
+        if vim.eval("filereadable('{0}')".format(file_path)) == "0":
+          vim.command("echomsg 'Can not jump to source file: {0}, file is not readable!'".format(file_path))
+          return False
+
+        if utils.OpenFileInCurrentWindow( file_path ):
           if utils.VimIsNeovim():
             # Sigh: https://github.com/neovim/neovim/issues/23165
             self._RenderWinBar()
