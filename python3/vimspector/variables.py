@@ -81,12 +81,24 @@ class Expandable( Formatable ):
   def VariablesReference( self ):
     assert False
 
+  @abc.abstractmethod
+  def FrameID( self ):
+    assert False
+
+  @abc.abstractmethod
+  def Name( self ):
+    assert False
+
+  @abc.abstractmethod
   def MemoryReference( self ):
-    assert None
+    assert False
 
   @abc.abstractmethod
   def HoverText( self ):
     return ""
+
+  def Update( self, connection ):
+    self.connection = connection
 
 
 class Scope( Expandable ):
@@ -101,7 +113,14 @@ class Scope( Expandable ):
   def MemoryReference( self ):
     return None
 
-  def Update( self, scope ):
+  def FrameID( self ):
+    return None
+
+  def Name( self ):
+    return self.scope[ 'name' ]
+
+  def Update( self, connection, scope ):
+    super().Update( connection )
     self.scope = scope
 
   def HoverText( self ):
@@ -110,8 +129,12 @@ class Scope( Expandable ):
 
 class WatchResult( Expandable ):
   """Holds the result of a Watch expression with expand/collapse."""
-  def __init__( self, connection: DebugAdapterConnection, result: dict ):
+  def __init__( self,
+                connection: DebugAdapterConnection,
+                watch,
+                result: dict ):
     super().__init__( connection )
+    self.watch = watch
     self.result = result
     # A new watch result is marked as changed
     self.changed = True
@@ -122,9 +145,15 @@ class WatchResult( Expandable ):
   def MemoryReference( self ):
     return self.result.get( 'memoryReference' )
 
+  def FrameID( self ):
+    return self.watch.expression.get( 'frameId' )
+
+  def Name( self ):
+    return self.watch.expression.get( 'expression' )
+
   def Update( self, connection, result ):
+    super().Update( connection )
     self.changed = False
-    self.connection = connection
     if self.result[ 'result' ] != result[ 'result' ]:
       self.changed = True
     self.result = result
@@ -140,8 +169,8 @@ class WatchResult( Expandable ):
 
 
 class WatchFailure( WatchResult ):
-  def __init__( self, connection: DebugAdapterConnection, reason ):
-    super().__init__( connection, { 'result': reason } )
+  def __init__( self, connection: DebugAdapterConnection, watch, reason ):
+    super().__init__( connection, watch, { 'result': reason } )
     self.changed = True
 
 
@@ -149,7 +178,8 @@ class Variable( Expandable ):
   """Holds one level of an expanded value tree. Also itself expandable."""
   def __init__( self,
                 connection: DebugAdapterConnection,
-                container: Expandable, variable: dict ):
+                container: Expandable,
+                variable: dict ):
     super().__init__( connection = connection, container = container )
     self.variable = variable
     # A new variable appearing is marked as changed
@@ -161,9 +191,15 @@ class Variable( Expandable ):
   def MemoryReference( self ):
     return self.variable.get( 'memoryReference' )
 
+  def FrameID( self ):
+    return self.container.FrameID()
+
+  def Name( self ):
+    return self.variable[ 'name' ]
+
   def Update( self, connection, variable ):
+    super().Update( connection )
     self.changed = False
-    self.connection = connection
     if self.variable[ 'value' ] != variable[ 'value' ]:
       self.changed = True
     self.variable = variable
@@ -190,6 +226,11 @@ class Watch:
     self.result = None
 
   def SetCurrentFrame( self, connection, frame ):
+    if connection is None:
+      self.connection = None
+      self.result.connection = None
+      return
+
     if self.connection is None:
       self.connection = connection
     elif self.connection != connection:
@@ -246,6 +287,9 @@ def AddExpandMappings( mappings = None ):
   for mapping in utils.GetVimList( mappings, 'read_memory' ):
     vim.command( f'nnoremap <silent> <buffer> { mapping } '
                  ':<C-u>call vimspector#ReadMemory()<CR>' )
+  for mapping in utils.GetVimList( mappings, 'add_data_breakpoint' ):
+    vim.command( f'nnoremap <silent> <buffer> { mapping } '
+                 ':<C-u>call vimspector#AddDataBreakpoint()<CR>' )
 
 
 def AddDisplayFormatMappings( mappings = None):
@@ -369,7 +413,7 @@ class VariablesView( object ):
     ]
     for w in self._watches:
       if w.connection == connection:
-        w.connection = None
+        w.SetCurrentFrame( None, None )
 
 
   def Reset( self ):
@@ -409,7 +453,7 @@ class VariablesView( object ):
         if not found:
           scope = Scope( connection, scope_body )
         else:
-          scope.Update( scope_body )
+          scope.Update( connection, scope_body )
 
         new_scopes.append( scope )
 
@@ -480,7 +524,7 @@ class VariablesView( object ):
 
       watch = self._variable_eval
       if watch.result is None or watch.result.connection != connection:
-        watch.result = WatchResult( connection, message[ 'body' ] )
+        watch.result = WatchResult( connection, watch, message[ 'body' ] )
       else:
         watch.result.Update( connection, message[ 'body' ] )
 
@@ -589,7 +633,9 @@ class VariablesView( object ):
     if watch.result is not None:
       watch.result.Update( watch.connection, message[ 'body' ] )
     else:
-      watch.result = WatchResult( watch.connection, message[ 'body' ] )
+      watch.result = WatchResult( watch.connection,
+                                  watch,
+                                  message[ 'body' ] )
 
     if ( watch.result.IsExpandable() and
          watch.result.IsExpanded() ):
@@ -609,7 +655,7 @@ class VariablesView( object ):
       # We already have a result for this watch. Wut ?
       return
 
-    watch.result = WatchFailure( watch.connection, reason )
+    watch.result = WatchFailure( watch.connection, watch, reason )
     self._DrawWatches()
 
   def _GetVariable( self, buf = None, line_num = None ):
@@ -758,7 +804,6 @@ class VariablesView( object ):
     if variable is None:
       return None, None
 
-    # TODO: Return the connection too!
     return variable.connection, variable.MemoryReference()
 
 
@@ -806,8 +851,10 @@ class VariablesView( object ):
           value = ''
 
         text = f'{indent}{marker}{icon} {name}: {value}'
-      else:
+      elif len( kind ) > 0:
         text = f'{indent}{marker}{icon} {name} ({kind}): {value}'
+      else:
+        text = f'{indent}{marker}{icon} {name}: {value}'
 
       line = utils.AppendToBuffer(
         view.buf,
@@ -948,4 +995,28 @@ class VariablesView( object ):
                                             syntax,
                                             self._vars.buf,
                                             self._watch.buf )
+
+
+  def GetDataBreakpointInfoRequest( self, buf, line_num ):
+    variable: Expandable
+    view: View
+
+    variable, view = self._GetVariable( buf, line_num )
+    if variable is None:
+      return None, None
+
+    arguments = {
+      'name': variable.Name()
+    }
+    frameId = variable.FrameID()
+    if frameId:
+      arguments[ 'frameId' ] = frameId
+
+    if variable.IsContained():
+      arguments[ 'variablesReference' ] = (
+        variable.container.VariablesReference() )
+
+    return variable.connection, arguments
+
+
 # vim: sw=2
