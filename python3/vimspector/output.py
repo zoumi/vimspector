@@ -65,6 +65,9 @@ class OutputView( object ):
     self._window = window
     self._buffers = {}
     self._api_prefix = api_prefix
+    try:
+        self._console_prompt_prepend = vim.eval("g:vimspector_console_prompt_prepend")
+    except:pass
     VIEWS.add( self )
 
     if session_id is None:
@@ -223,7 +226,7 @@ class OutputView( object ):
       if category == 'Console':
         utils.SetUpPromptBuffer( tab_buffer.buf,
                                  name,
-                                 '> ',
+                                 '> ' + self._console_prompt_prepend,
                                  'vimspector#EvaluateConsole',
                                  'vimspector#OmniFuncConsole' )
       else:

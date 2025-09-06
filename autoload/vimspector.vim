@@ -538,6 +538,24 @@ function! vimspector#AddWatchPrompt( expr ) abort
   call vimspector#AddWatch( a:expr )
 endfunction
 
+function! vimspector#SetConsolePromptPrepend( expr ) abort
+    let g:vimspector_console_prompt_prepend = a:expr
+    if &buftype != 'prompt'
+        echomsg 'current buffer is not a prompt buffer, please call vimspector#SetConsolePromptPrepend in vimspector.Console buffer'
+    endif
+    call prompt_setprompt(bufnr(), '> ' . a:expr)
+    "TODO:loop all buffers
+endfunction
+
+function! vimspector#ClearConsolePromptPrepend() abort
+    let g:vimspector_console_prompt_prepend = ''
+    if &buftype != 'prompt'
+        echomsg 'current buffer is not a prompt buffer, please call vimspector#ClearConsolePromptPrepend in vimspector.Console buffer'
+    endif
+    call prompt_setprompt(bufnr(), '> ')
+    "TODO:loop all buffers
+endfunction
+
 function! vimspector#Evaluate( expr ) abort
   if !s:Enabled()
     return
@@ -552,7 +570,17 @@ function! vimspector#EvaluateConsole( expr ) abort
   endif
   stopinsert
   setlocal nomodified
-  py3 _vimspector_session.EvaluateConsole( vim.eval( 'a:expr' ), False )
+
+py3 << END
+prompt = vim.eval('prompt_getprompt(bufnr())')
+prepend = ""
+try:
+  if prompt[0:2] == "> ":
+    prepend = prompt[2:]
+except:
+  pass
+_vimspector_session.EvaluateConsole( prepend + vim.eval( 'a:expr' ), False )
+END
 endfunction
 
 function! vimspector#ShowOutput( ... ) abort
