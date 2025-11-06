@@ -87,7 +87,7 @@ def BufferLineValue( file_name: str, line_num: int ) -> str:
   buf = BufferForFile( file_name )
   try:
     return buf[ line_num - 1 ]
-  except IndexError:
+  except:
     return ''
 
 
