@@ -214,6 +214,10 @@ class ProjectBreakpoints( object ):
     self._render_subject = render_event_emitter.subscribe( self.Refresh )
     self._IsPCPresentAt = IsPCPresentAt
     self._disassembly_manager = disassembly_manager
+    self._file_path_map = []
+    try:
+      self._file_path_map = vim.eval("g:vimspector_breakpoint_file_path_maps")
+    except:pass
     utils.SetUpLogging( self._logger )
 
 
@@ -1047,6 +1051,9 @@ class ProjectBreakpoints( object ):
 
         breakpoints.append( dap_bp )
 
+      for m in self._file_path_map:
+        for old, new in m.items():
+          file_name = file_name.replace(old, new)
 
       source = {
         'name': os.path.basename( file_name ),
