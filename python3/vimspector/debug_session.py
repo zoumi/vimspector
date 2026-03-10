@@ -152,6 +152,10 @@ class DebugSession( object ):
     self._outputView: output.DAPOutputView = None
     self._codeView: code.CodeView = None
     self._disassemblyView: disassembly.DisassemblyView = None
+    self.source_maps = []
+    try:
+      self.source_maps = vim.eval("g:vimspector_source_maps")
+    except:pass
 
     if parent_session:
       self._breakpoints = parent_session._breakpoints
@@ -1511,7 +1515,8 @@ class DebugSession( object ):
 
     if reason == 'stopped':
       vim.command( 'silent doautocmd User VimspectorEventProgramPaused' )
-      self._breakpoints.ClearTemporaryBreakpoint( frame[ 'source' ][ 'path' ],
+      file_name = utils.source_map_to_local(self.source_maps,frame[ 'source' ][ 'path' ])
+      self._breakpoints.ClearTemporaryBreakpoint( file_name,
                                                   frame[ 'line' ] )
 
     return True
@@ -2308,7 +2313,7 @@ class DebugSession( object ):
       'command': 'gotoTargets',
       'arguments': {
         'source': {
-          'path': utils.NormalizePath( file_name )
+          'path': utils.source_map_to_remote(self.source_maps,utils.NormalizePath( file_name ))
         },
         'line': line
       },

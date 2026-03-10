@@ -1177,3 +1177,17 @@ def HighlightTextSection( buf,
             'end_col': ( end_col - 1 ) + 1,
             'priority': 10,
           } )
+
+def source_map_to_local(maps:list,path:str):
+    for m in maps:
+        for remote, local in m.items():
+          path = path.replace(remote, local)
+    return path
+
+def source_map_to_remote(maps:list,path:str):
+    for m in maps:
+        for remote, local in m.items():
+          path = path.replace(local,remote)
+    return path
+
+

@@ -41,6 +41,11 @@ class CodeView( object ):
     self._logger = logging.getLogger( __name__ + '.' + str( session_id ) )
     utils.SetUpLogging( self._logger )
 
+    self.source_maps = []
+    try:
+      self.source_maps = vim.eval("g:vimspector_source_maps")
+    except:pass
+
     self._next_sign_id = 1000 * session_id + 1
     self._signs = {
       'vimspectorPC': None,
@@ -80,7 +85,8 @@ class CodeView( object ):
       return False
 
     abs_path = utils.NormalizePath( file_path )
-    return ( frame[ 'source' ][ 'path' ] == abs_path
+    file_path = utils.source_map_to_local(self.source_maps,frame[ 'source' ][ 'path' ])
+    return ( file_path == abs_path
       and frame[ 'line' ] == line )
 
 
@@ -101,14 +107,15 @@ class CodeView( object ):
     # NEXT_SIGN_ID += 1
 
     # If there's also a breakpoint on this line, use vimspectorPCBP
+    file_path = utils.source_map_to_local(self.source_maps,frame[ 'source' ][ 'path' ])
     sign =  'vimspectorPCBP' if self._IsBreakpointPresentAt(
-      frame[ 'source' ][ 'path' ], frame[ 'line' ] ) else 'vimspectorPC'
+      file_path, frame[ 'line' ] ) else 'vimspectorPC'
 
-    if utils.BufferExists( frame[ 'source' ][ 'path' ] ):
+    if utils.BufferExists( file_path ):
       signs.PlaceSign( self._signs[ 'vimspectorPC' ],
                        'VimspectorCode',
                        sign,
-                       frame[ 'source' ][ 'path' ],
+                       file_path,
                        frame[ 'line' ] )
 
 
@@ -131,8 +138,8 @@ class CodeView( object ):
       return False
 
     with utils.LetCurrentWindow( self._window ):
+      file_path = utils.source_map_to_local(self.source_maps,frame[ 'source' ][ 'path' ])
       try:
-        file_path = frame[ 'source' ][ 'path' ]
         #check if file exists by vim
         if vim.eval("filereadable('{0}')".format(file_path)) == "0":
           vim.command("echomsg 'Can not jump to source file: {0}, file is not readable!'".format(file_path))
@@ -145,7 +152,7 @@ class CodeView( object ):
         vim.command( 'doautocmd <nomodeline> User VimspectorJumpedToFrame' )
       except vim.error:
         self._logger.exception( 'Unexpected vim error opening file {}'.format(
-          frame[ 'source' ][ 'path' ] ) )
+          file_path ) )
         return False
 
     if should_jump_to_location:
@@ -159,11 +166,12 @@ class CodeView( object ):
                                   frame[ 'line' ],
                                   frame[ 'column' ] )
     except vim.error:
+      file_path = utils.source_map_to_local(self.source_maps,frame[ 'source' ][ 'path' ])
       self._logger.exception( "Unable to jump to %s:%s in %s, maybe the file "
                               "doesn't exist",
                               frame[ 'line' ],
                               frame[ 'column' ],
-                              frame[ 'source' ][ 'path' ] )
+                              file_path )
       return False
 
     # Open any fold at the cursor position

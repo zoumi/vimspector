@@ -214,9 +214,9 @@ class ProjectBreakpoints( object ):
     self._render_subject = render_event_emitter.subscribe( self.Refresh )
     self._IsPCPresentAt = IsPCPresentAt
     self._disassembly_manager = disassembly_manager
-    self._file_path_map = []
+    self.source_maps = []
     try:
-      self._file_path_map = vim.eval("g:vimspector_breakpoint_file_path_maps")
+      self.source_maps = vim.eval("g:vimspector_source_maps")
     except:pass
     utils.SetUpLogging( self._logger )
 
@@ -657,12 +657,13 @@ class ProjectBreakpoints( object ):
       # that we'd be able to actually use it
       return
 
-    existing_bp, _ = self._FindLineBreakpoint( source[ 'path' ],
+    file_path = utils.source_map_to_local(self.source_maps,source[ 'path' ])
+    existing_bp, _ = self._FindLineBreakpoint( file_path,
                                                server_bp[ 'line' ] )
 
     if existing_bp is None:
       self._logger.debug( "Adding new breakpoint from server %s", server_bp )
-      self._PutLineBreakpoint( source[ 'path' ],
+      self._PutLineBreakpoint( file_path,
                                server_bp[ 'line' ],
                                {},
                                connection = conn,
@@ -1051,9 +1052,7 @@ class ProjectBreakpoints( object ):
 
         breakpoints.append( dap_bp )
 
-      for m in self._file_path_map:
-        for old, new in m.items():
-          file_name = file_name.replace(old, new)
+      file_name = utils.source_map_to_remote(self.source_maps,file_name)
 
       source = {
         'name': os.path.basename( file_name ),

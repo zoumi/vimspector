@@ -108,6 +108,10 @@ class StackTraceView( object ):
   _line_to_thread: typing.Dict[ int, Thread ]
 
   def __init__( self, session_id, win ):
+    self.source_maps = []
+    try:
+      self.source_maps = vim.eval("g:vimspector_source_maps")
+    except:pass
     self._logger = logging.getLogger(
       __name__ + '.' + str( session_id ) )
     utils.SetUpLogging( self._logger, session_id )
@@ -706,14 +710,16 @@ class StackTraceView( object ):
                            self._buf.name,
                            line )
 
-          if ( utils.BufferExists( frame[ 'source' ][ 'path' ] )
+          file_path = utils.source_map_to_local(self.source_maps,frame[ 'source' ][ 'path' ])
+
+          if ( utils.BufferExists( file_path )
                and frame[ 'line' ] ):
             sign_id = len( self._top_of_stack_signs ) + 100
             self._top_of_stack_signs.append( sign_id )
             signs.PlaceSign( sign_id,
                              'VimspectorStackTrace',
                              'vimspectorNonActivePC',
-                             frame[ 'source' ][ 'path' ],
+                             file_path,
                              frame[ 'line' ] )
 
 
@@ -730,9 +736,11 @@ class StackTraceView( object ):
       def consume_source( msg ):
         thread.session.sources[ source_reference ] = source
 
+        file_path = utils.source_map_to_local(self.source_maps,source.get( 'path', source[ 'name' ] ))
         buf_name = os.path.join( '_vimspector_tmp',
                                  str( thread.session.session.session_id ),
-                                 source.get( 'path', source[ 'name' ] ) )
+                                 file_path
+                                  )
 
         buf_name = utils.BufferNameForSession(
           buf_name,
@@ -744,7 +752,7 @@ class StackTraceView( object ):
         self._scratch_buffers.append( buf )
         utils.SetUpHiddenBuffer( buf, buf_name )
 
-        source[ 'path' ] = buf_name
+        source[ 'path' ] = utils.source_map_to_remote(self.source_maps,buf_name)
         with utils.ModifiableScratchBuffer( buf ):
           utils.SetBufferContents( buf, msg[ 'body' ][ 'content' ] )
 

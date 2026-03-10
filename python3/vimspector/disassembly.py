@@ -33,6 +33,10 @@ class DisassemblyView( object ):
     self._window = window
     # Initially we don't care about the buffer. We only update it when we have
     # one crated from the request.
+    self.source_maps = []
+    try:
+      self.source_maps = vim.eval("g:vimspector_source_maps")
+    except:pass
     self._buf = None
     self._requesting = False
 
@@ -270,13 +274,13 @@ class DisassemblyView( object ):
       return
 
     buf_name = '_vimspector_disassembly'
-    file_name = ( self.current_frame.get( 'source' ) or {} ).get( 'path' ) or ''
+    file_path = utils.source_map_to_local(self.source_maps, (self.current_frame.get( 'source' ) or {} ).get( 'path' ) or '')
     self._buf = utils.BufferForFile( buf_name )
 
     utils.Call( 'setbufvar',
                 self._buf.number,
                 'vimspector_disassembly_path',
-                file_name )
+                file_path)
     utils.Call( 'setbufvar',
                 self._buf.number,
                 '&filetype',

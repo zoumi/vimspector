@@ -65,6 +65,7 @@ class OutputView( object ):
     self._window = window
     self._buffers = {}
     self._api_prefix = api_prefix
+    self._console_prompt_prepend = ""
     try:
         self._console_prompt_prepend = vim.eval("g:vimspector_console_prompt_prepend")
     except:pass
