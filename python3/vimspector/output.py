@@ -66,6 +66,7 @@ class OutputView( object ):
     self._buffers = {}
     self._api_prefix = api_prefix
     self._console_prompt_prepend = ""
+    self._has_prompt_appendbuf = bool(vim.eval("has('nvim-0.12.0')"))
     try:
         self._console_prompt_prepend = vim.eval("g:vimspector_console_prompt_prepend")
     except:pass
@@ -104,7 +105,10 @@ class OutputView( object ):
     buf = self._buffers[ category ].buf
 
     with utils.ModifiableScratchBuffer( buf ):
-      utils.AppendToBuffer( buf, text_lines )
+      if (category == 'Console') and self._has_prompt_appendbuf:
+        utils.Call( 'prompt_appendbuf', buf.number, text_lines)
+      else:
+        utils.AppendToBuffer( buf, text_lines )
 
     self._ToggleFlag( category, True )
 
