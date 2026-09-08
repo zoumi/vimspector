@@ -1983,6 +1983,7 @@ class DebugSession( object ):
   def _OnInitializeComplete( self ):
     self._init_complete = True
     self._LoadThreadsIfReady()
+    vim.command( 'doautocmd <nomodeline> User VimspectorInitializedCompleted' )
 
   def _LoadThreadsIfReady( self ):
     # NOTE: You might think we should only load threads on a stopped event,
