@@ -106,6 +106,7 @@ class OutputView( object ):
 
     with utils.ModifiableScratchBuffer( buf ):
       if (category == 'Console') and self._has_prompt_appendbuf:
+        text_lines.extend([''])
         utils.Call( 'prompt_appendbuf', buf.number, text_lines)
       else:
         utils.AppendToBuffer( buf, text_lines )
