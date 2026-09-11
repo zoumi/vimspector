@@ -1894,8 +1894,8 @@ class DebugSession( object ):
       'command': 'initialize',
       'arguments': {
         'adapterID': self._adapter.get( 'name', 'adapter' ),
-        'clientID': 'vimspector',
-        'clientName': 'vimspector',
+        'clientID': self._adapter.get('clientID','vimspector'),
+        'clientName': self._adapter.get('clientName','vimspector'),
         'linesStartAt1': True,
         'columnsStartAt1': True,
         'locale': 'en_GB',
